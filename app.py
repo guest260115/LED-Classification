@@ -17,16 +17,11 @@ st.markdown("""
 """)
 st.info("📸 LED 칩이 잘 보이도록 초근접(매크로 렌즈) 촬영한 사진을 업로드해 주세요.")
 
-# 2. 딥러닝 모델 구조 정의 (ResNet18) 및 가중치 불러오기
+# 2. 기본 클래스 리스트 정의
 classes = ['519a', 'LHP73B', 'SBT90.2', 'SFT42R', 'SFT70', 'SFT90']
-num_classes = len(classes)
 
 @st.cache_resource # 모델을 한 번만 읽어오도록 메모리에 캐싱합니다.
 def load_model():
-    model = models.resnet18()
-    model.fc = nn.Linear(model.fc.in_features, num_classes)
-    
-    # 파일이 없으면 깃허브 Release에서 자동으로 다운로드합니다.
     weights_path = 'led_resnet18.pth'
     if not os.path.exists(weights_path):
         with st.spinner("📦 깃허브에서 모델 가중치 파일(44MB)을 다운로드하는 중입니다. 최초 1회만 진행됩니다..."):
@@ -34,18 +29,32 @@ def load_model():
                 url = "https://github.com/guest260115/LED-Classification/releases/download/v1.0/led_resnet18.pth"
                 urllib.request.urlretrieve(url, weights_path)
             except Exception as download_error:
-                st.error(f"⚠️ 가중치 다운로드 실패. Release에 파일이 올바르게 업로드되었는지 확인해 주세요: {download_error}")
+                st.error(f"⚠️ 가중치 다운로드 실패: {download_error}")
                 return None
     
     try:
-        model.load_state_dict(torch.load(weights_path, map_location=torch.device('cpu')))
+        # [치트키 부각] 가중치 파일을 먼저 불러와서 저장된 실제 클래스 개수를 자동으로 읽어옵니다.
+        checkpoint = torch.load(weights_path, map_location=torch.device('cpu'))
+        checkpoint_classes = checkpoint['fc.weight'].shape[0] # 파일에 저장된 출력 개수 (7)
+        
+        # 확인된 개수에 맞춰서 모델 구조를 동적으로 생성합니다 (Size Mismatch 원천 차단)
+        model = models.resnet18()
+        model.fc = nn.Linear(model.fc.in_features, checkpoint_classes)
+        
+        # 가중치 주입
+        model.load_state_dict(checkpoint)
         model.eval()
+        
+        # 코드상의 클래스 이름 개수가 부족하면 에러 방지를 위해 더미 이름을 채워넣습니다.
+        global classes
+        while len(classes) < checkpoint_classes:
+            classes.append(f"기타/알수없음({len(classes)+1})")
+            
         return model
     except Exception as e:
         st.error(f"⚠️ 모델 로드 실패: {e}")
         return None
 
-# 중요: 이 라인은 무조건 들여쓰기 없이 맨 앞에 서 있어야 합니다!
 model = load_model()
 
 # 3. 모델 입력용 전처리 파이프라인
@@ -97,7 +106,9 @@ if uploaded_file is not None:
             st.success(f"🎉 판별 결과: **{pred_class}** (확신도: {confidence:.1f}%)")
             st.balloons()
             st.markdown("💡 **소비자 안내:** 고가의 정품 SBT90.2 칩으로 추정됩니다. 판매 스펙과 일치합니다.")
+        elif "기타" in pred_class:
+            st.info(f"🔍 판별 결과: **{pred_class}** (확신도: {confidence:.1f}%)")
+            st.markdown("💡 **소비자 안내:** 학습 데이터 외의 미분류 패턴이 감지되었습니다. 재촬영을 권장합니다.")
         else:
             st.warning(f"⚠️ 판별 결과: **{pred_class}** (확신도: {confidence:.1f}%)")
             st.markdown(f"💡 **소비자 안내:** 모델 분석 결과 해당 칩은 고가의 SBT90.2가 아닌 **{pred_class}** 일 확률이 높습니다. 만약 SBT90.2 가격으로 구매하셨다면 가짜 스펙 사기를 의심해 볼 수 있습니다.")
-
