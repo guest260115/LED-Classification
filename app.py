@@ -20,22 +20,28 @@ st.info("📸 LED 칩이 잘 보이도록 초근접(매크로 렌즈) 촬영한 
 classes = ['519a', 'LHP73B', 'SBT90.2', 'SFT42R', 'SFT70', 'SFT90']
 num_classes = len(classes)
 
+import os
+import urllib.request
+
 @st.cache_resource # 모델을 한 번만 읽어오도록 메모리에 캐싱합니다.
 def load_model():
     model = models.resnet18()
-    # 최종 출력층을 6개로 변경
     model.fc = nn.Linear(model.fc.in_features, num_classes)
     
-    # 유저님이 저장한 가중치 파일 로드 (웹 서버 환경에 맞춰 CPU로 로드)
+    # [수정본] 파일이 없으면 깃허브 Release에서 자동으로 다운로드합니다.
+    weights_path = 'led_resnet18.pth'
+    if not os.path.exists(weights_path):
+        with st.spinner("📦 깃허브에서 모델 가중치 파일(44MB)을 다운로드하는 중입니다. 최초 1회만 진행됩니다..."):
+            url = "https://github.com/guest260115/LED-Classification/releases/download/v1.0/led_resnet18.pth"
+            urllib.request.urlretrieve(url, weights_path)
+    
     try:
-        model.load_state_dict(torch.load('led_resnet18.pth', map_location=torch.device('cpu')))
+        model.load_state_dict(torch.load(weights_path, map_location=torch.device('cpu')))
         model.eval()
         return model
-    except FileNotFoundError:
-        st.error("⚠️ 'led_resnet18.pth' 파일이 코드와 같은 폴더에 있는지 확인해 주세요.")
+    except Exception as e:
+        st.error(f"⚠️ 모델 로드 실패: {e}")
         return None
-
-model = load_model()
 
 # 3. 모델 입력용 전처리 파이프라인 (유저님의 코랩 코드와 100% 일치)
 def apply_clahe(img):
