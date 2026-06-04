@@ -11,7 +11,7 @@ import urllib.request
 # 1. 웹 페이지 기본 레이아웃 및 테마 설정
 st.set_page_config(page_title="LED 스펙 및 정품 판별기", page_icon="💡", layout="centered")
 
-st.title("💡 인공지능 기반 LED 스펙 및 정품 판별 서비스")
+st.markdown("<h1 style='font-size: 2.2rem; word-break: keep-all;'>인공지능 기반 LED 스펙 및 정품 판별 서비스</h1>", unsafe_allow_html=True)
 st.markdown("""
 인터넷 쇼핑몰(알리익스프레스 등)의 **허위 스펙(가짜 칩)** 및 고가 제품(SBT90.2)을 저가 제품(SFT70 등)으로 속여 파는 행위를 방지하기 위한 소비자 보호용 딥러닝 서비스입니다.
 """)
