@@ -160,7 +160,7 @@ if uploaded_file is not None:
                 st.markdown(f"**• 최대 전류:** {specs['최대 전류']}")
                 st.markdown(f"**• 최고 밝기:** {specs['최고 밝기']}")
                 
-            st.markdown(f"**💡 핵심 인포:** {specs['주요 특징']}")
+            st.markdown(f"**💡 특징:** {specs['주요 특징']}")
             
             
         else:
