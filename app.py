@@ -100,3 +100,4 @@ if uploaded_file is not None:
         else:
             st.warning(f"⚠️ 판별 결과: **{pred_class}** (확신도: {confidence:.1f}%)")
             st.markdown(f"💡 **소비자 안내:** 모델 분석 결과 해당 칩은 고가의 SBT90.2가 아닌 **{pred_class}** 일 확률이 높습니다. 만약 SBT90.2 가격으로 구매하셨다면 가짜 스펙 사기를 의심해 볼 수 있습니다.")
+
