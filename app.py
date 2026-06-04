@@ -11,26 +11,65 @@ import urllib.request
 # 1. 웹 페이지 기본 레이아웃 및 테마 설정
 st.set_page_config(page_title="LED 스펙 및 정품 판별기", page_icon="💡", layout="centered")
 
-st.markdown("<h1 style='font-size: 2.2rem; word-break: keep-all;'>인공지능 기반 LED 스펙 및 정품 판별 서비스</h1>", unsafe_allow_html=True)
+# [수정 ①] 타이틀 줄바꿈 방지 및 글자 크기 최적화 (어절이 쪼개지지 않음)
+st.markdown("<h1 style='font-size: 2.1rem; word-break: keep-all; margin-bottom: 10px;'>💡 인공지능 기반 LED 스펙 및 정품 판별 서비스</h1>", unsafe_allow_html=True)
+
 st.markdown("""
-인터넷 쇼핑몰(알리익스프레스 등)의 **허위 스펙(가짜 칩)** 및 고가 제품(SBT90.2)을 저가 제품(SFT70 등)으로 속여 파는 행위를 방지하기 위한 소비자 보호용 딥러닝 서비스입니다.
+인터넷 쇼핑몰(알리익스프레스 등)의 **허위 스펙(가짜 칩)** 및 고가 제품(SBT90.2)을 저가 제품으로 속여 파는 행위를 방지하기 위한 소비자 보호용 딥러닝 서비스입니다.
 """)
 st.info("📸 LED 칩이 잘 보이도록 초근접(매크로 렌즈) 촬영한 사진을 업로드해 주세요.")
 
-# 2. [💡 핵심 수정] 코랩처럼 깃허브 저장소의 train 폴더를 읽어서 클래스를 자동 인식하고 정렬합니다.
+# [수정 ②] 조사된 7종 LED의 정확한 하드웨어 상세 스펙 사전 정의
+led_specs = {
+    '519a': {
+        '제조사': 'Nichia (니치아)', '사이즈': '3535 (3.5 x 3.5 mm)', '구동 전압': '3V',
+        '최대 전류': '5 ~ 6A (터보 구동 시)', '최고 밝기': '약 1,200 ~ 1,400 lm',
+        '주요 특징': '최고 수준의 연색성 및 자연스러운 색감 (CRI 90+, R9080 구현), 전등 매니아층 최고 선호 칩'
+    },
+    'lhp531': {
+        '제조사': 'Lumenpioneer (루멘파이오니어)', '사이즈': '5050 (5.0 x 5.0 mm)', '구동 전압': '3V',
+        '최대 전류': '8A', '최고 밝기': '약 3,000 lm',
+        '주요 특징': '3x3 격자 배열 코어가 특징인 평면형(Domeless) 가성비 칩, 우수한 중심광 직진성 발휘'
+    },
+    'lhp73b': {
+        '제조사': 'Lumenpioneer (루멘파이오니어)', '사이즈': '7070 (7.0 x 7.0 mm)', '구동 전압': '3V',
+        '최대 전류': '16 ~ 20A (약 50W)', '최고 밝기': '약 8,500 lm (스펙상)',
+        '주요 특징': '거대한 체급의 초광량 대형 돔리스 칩, 고가인 SBT90.2의 대표적인 합리적 대체 레이아웃'
+    },
+    'sbt90.2': {
+        '제조사': 'Luminus (루미너스)', '사이즈': '9090 (9.0 x 9.0 mm)', '구동 전압': '3V',
+        '최대 전류': '18 ~ 20A', '최고 밝기': '약 5,400 ~ 6,000 lm',
+        '주요 특징': '독자적인 은색 메탈 프레임 및 투명 유리창 구조. 세계 최고 수준의 초장거리 직진성 끝판왕 칩 (최고가)'
+    },
+    'sft42r': {
+        '제조사': 'Luminus (루미너스)', '사이즈': '5050 (5.0 x 5.0 mm)', '구동 전압': '3V',
+        '최대 전류': '13A', '최고 밝기': '약 3,000 lm',
+        '주요 특징': '혁신적인 완벽한 원형 발광면(Round Die) 구조, 빛을 쏘았을 때 사각 왜곡 없이 둥근 빔 형태 구현'
+    },
+    'sft70': {
+        '제조사': 'Luminus (루미너스)', '사이즈': '7070 (7.0 x 7.0 mm)', '구동 전압': '6V 또는 12V (고전압)',
+        '최대 전류': '7A (6V 기준)', '최고 밝기': '약 3,000 ~ 3,500 lm',
+        '주요 특징': '형제 칩 중 유일한 고전압 구동 방식, 면적 대비 빛의 밀도가 매우 높아 강력한 서치라이트 효과'
+    },
+    'sft90': {
+        '제조사': 'Luminus (루미너스)', '사이즈': '7070 (7.0 x 7.0 mm)', '구동 전압': '3V',
+        '최대 전류': '20A', '최고 밝기': '약 5,500 lm',
+        '주요 특징': '끝판왕 SBT90.2의 미친 성능을 대중적인 7070 일반 패키징 패널에 담아낸 고성능 파생 모델'
+    }
+}
+
+# 2. 딥러닝 모델 구조 정의 (깃허브 train 폴더 기준 자동 클래스 생성)
 base_path = 'train'
 if os.path.exists(base_path):
     classes = sorted([f for f in os.listdir(base_path) if os.path.isdir(os.path.join(base_path, f))])
 else:
-    # 혹시 모를 예외 상황 방지용 기본 리스트
-    classes = ['519a', 'LHP73B', 'SBT90.2', 'SFT42R', 'SFT70', 'SFT90']
+    classes = ['519a', 'LHP531', 'LHP73B', 'SBT90.2', 'SFT42R', 'SFT70', 'SFT90']
 
 num_classes = len(classes)
 
-@st.cache_resource # 모델을 한 번만 읽어오도록 메모리에 캐싱합니다.
+@st.cache_resource
 def load_model():
     model = models.resnet18()
-    # 자동 인식된 클래스 개수(7개)에 맞춰 최종 출력층 설정
     model.fc = nn.Linear(model.fc.in_features, num_classes)
     
     weights_path = 'led_resnet18.pth'
@@ -98,10 +137,33 @@ if uploaded_file is not None:
         pred_class = classes[predicted]
         confidence = prob[predicted].item()
         
+        # [수정 ③] 단순 안내문 대신 세부 하드웨어 스펙 대시보드 출력
         if pred_class == 'SBT90.2':
             st.success(f"🎉 판별 결과: **{pred_class}** (확신도: {confidence:.1f}%)")
             st.balloons()
-            st.markdown("💡 **소비자 안내:** 고가의 정품 SBT90.2 칩으로 추정됩니다. 판매 스펙과 일치합니다.")
         else:
             st.warning(f"⚠️ 판별 결과: **{pred_class}** (확신도: {confidence:.1f}%)")
-            st.markdown(f"💡 **소비자 안내:** 모델 분석 결과 해당 칩은 고가의 SBT90.2가 아닌 **{pred_class}** 일 확률이 높습니다. 만약 SBT90.2 가격으로 구매하셨다면 가짜 스펙 사기를 의심해 볼 수 있습니다.")
+            
+        # 대소문자 방지용 소문자 매핑 검사
+        spec_key = pred_class.lower()
+        if spec_key in led_specs:
+            specs = led_specs[spec_key]
+            st.markdown(f"### 📋 {pred_class} 실제 하드웨어 사양")
+            
+            # 스펙 정보를 가로 2열 격자로 예쁘게 배치
+            sc1, sc2 = st.columns(2)
+            with sc1:
+                st.markdown(f"**• 제조회사:** {specs['제조사']}")
+                st.markdown(f"**• 칩셋 규격:** {specs['사이즈']}")
+                st.markdown(f"**• 구동 전압:** {specs['구동 전압']}")
+            with sc2:
+                st.markdown(f"**• 최대 전류:** {specs['최대 전류']}")
+                st.markdown(f"**• 최고 밝기:** {specs['최고 밝기']}")
+                
+            st.markdown(f"**💡 핵심 인포:** {specs['주요 특징']}")
+            
+            # 소비자를 위한 기획 의도 문구 결합 (스토리텔링)
+            if pred_class != 'SBT90.2':
+                st.markdown(f"🚨 **소비자 경보:** 만약 판매자가 이 조명 제품을 고가의 끝판왕 칩인 **SBT90.2** 탑재 상품으로 광고하여 판매했다면, 가짜 스펙 사기 및 부당 이득 취득 행위일 가능성이 매우 높으므로 각별히 주의하시기 바랍니다.")
+        else:
+            st.info("💡 자동으로 인식된 LED 종류이나 상세 스펙 데이터베이스가 구축되지 않은 항목입니다.")
