@@ -17,7 +17,7 @@ st.markdown("<h1 style='font-size: 2.1rem; word-break: keep-all; margin-bottom: 
 st.markdown("""
 인터넷 쇼핑몰(알리익스프레스 등)의 **허위 스펙(가짜 칩)** 및 고가 제품(SBT90.2)을 저가 제품으로 속여 파는 행위를 방지하기 위한 소비자 보호용 딥러닝 서비스입니다.
 """)
-st.info("📸 LED 칩이 잘 보이도록 초근접(매크로 렌즈) 촬영한 사진을 업로드해 주세요.")
+st.info("📸 LED 칩이 잘 보이도록 초근접 촬영한 사진을 업로드해 주세요.")
 
 # [수정 ②] 조사된 7종 LED의 정확한 하드웨어 상세 스펙 사전 정의
 led_specs = {
